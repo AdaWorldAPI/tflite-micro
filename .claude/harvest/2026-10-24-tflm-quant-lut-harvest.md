@@ -47,7 +47,7 @@ space (the lance-graph `MoorePalettePairs` / Palette256 law precedent).
 
 ### 2a. int8 tanh — fixed point, not a table
 
-**SOURCE** `internal/reference/integer_ops/tanh.h:28-60`, prepared in `tanh.cc:62-74`.
+**SOURCE** `internal/reference/integer_ops/tanh.h:28-60`, prepared in `tanh.cc:61-72`.
 - Prepare: `input_real_multiplier = scale · 2^(31−4)` (`kInputIntegerBits = 4`),
   `frexp` into `input_multiplier`/`input_left_shift`, and
   `input_range_radius = CalculateInputRadius(4, shift, 31)`.
@@ -55,12 +55,12 @@ space (the lance-graph `MoorePalettePairs` / Palette256 law precedent).
   `input >= radius → kMaxInt8 (127)`; otherwise
   `MultiplyByQuantizedMultiplier` into Q4, gemmlowp-style fixed-point `tanh`,
   `RoundingDivideByPOT(…, 31 − kOutputScale)` with `kOutputScale = 7`
-  (output step 1/128), clamp to [−128, 127].
+  (the kernel's output is Q0.7, step 1/128), clamp to [−128, 127].
 
 **IMPLICATION**
 - The int8 tanh output saturates to **−128 at the negative end and 127 at the
-  positive end**, so it is not odd: tanh(−big) = −1.0 exactly, tanh(+big) =
-  127/128. This is a measured instance of the asymmetry H-SYM targets.
+  positive end**, so it is not
+  odd: read as Q0.7, tanh(−big) = −1.0 exactly and tanh(+big) = 127/128. This is a measured instance of the asymmetry H-SYM targets.
 - It is also a direct conflict for I8SymNaN: an I8Asym tanh result fed into an
   I8SymNaN lane would read −128 as NaN. The two code spaces must never share an
   output buffer; a code law that targets I8SymNaN must clamp to −127.
@@ -68,7 +68,7 @@ space (the lance-graph `MoorePalettePairs` / Palette256 law precedent).
 ### 2b. int16 tanh — one shared, fixed 256-entry table
 
 **SOURCE** `internal/reference/integer_ops/tanh.h:63-110`, table at
-`internal/common.h:705-735`, prepare at `tanh.cc:76-124`.
+`internal/common.h:705-735`, prepare at `tanh.cc:74-124`.
 - Comment: "We use the LUT for sigmoid and take into account, that
   tanh(x) = 2*sigmoid(2*x) - 1" and "We scale by 3/4 to expand range
   [-8,8]->[-10.7,10.7]".
@@ -101,7 +101,7 @@ space (the lance-graph `MoorePalettePairs` / Palette256 law precedent).
 
 ### 2c. uint8 / float tanh
 
-**SOURCE** `internal/reference/tanh.h`: the uint8 overload (`:83-118`) clamps to
+**SOURCE** `internal/reference/tanh.h`: the uint8 overload (`:82-118`) clamps to
 `0` (`:98`) and `255` (`:100`) at the radius and otherwise reinterprets the result
 as Q0.7 in uint8 (`:115-118`). The float path calls `std::tanh` element-wise.
 
@@ -115,7 +115,7 @@ as Q0.7 in uint8 (`:115-118`). The float path calls `std::tanh` element-wise.
   clamp to the type's range, store at `lut[(uint8_t)(T)val]`.
   Comment (`:516-519`): the int8 table is "ordered as [0, 1, ..., 127, -128, ...,
   -2, -1]" because indices are cast straight to uint8.
-- `detail::LUTPopulateInt16` (`:547-604`): 512 steps across the input range plus
+- `detail::LUTPopulateInt16` (`:547-601`): 512 steps across the input range plus
   one end entry (513 total); each entry is the rounded sample minus half the
   midpoint interpolation error (`bias = TfLiteRound(midpoint_err / 2)`), clamped.
 - `LUTSize<T>()` (`:660`): 256 for 8-bit, 513 for int16 ("the high 9 bits are used
