@@ -60,7 +60,7 @@ space (the lance-graph `MoorePalettePairs` / Palette256 law precedent).
 **IMPLICATION**
 - The int8 tanh output saturates to **−128 at the negative end and 127 at the
   positive end**, so it is not
-  odd: read as Q0.7, tanh(−big) = −1.0 exactly and tanh(+big) = 127/128. This is a measured instance of the asymmetry H-SYM targets.
+  odd: read as Q0.7, tanh(−big) = −1.0 exactly and tanh(+big) = 127/128. This is an instance, in shipped code, of the asymmetry the symmetric I8SymNaN hypothesis targets (read from the code path, not run).
 - It is also a direct conflict for I8SymNaN: an I8Asym tanh result fed into an
   I8SymNaN lane would read −128 as NaN. The two code spaces must never share an
   output buffer; a code law that targets I8SymNaN must clamp to −127.
